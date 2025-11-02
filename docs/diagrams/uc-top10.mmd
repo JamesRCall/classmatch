@@ -1,0 +1,21 @@
+flowchart LR
+  actor([Student])
+  subgraph System [ClassMatch System]
+    UC1((Student Registration & Profile))
+    UC2((Secure Login (JWT)))
+    UC3((Set Weekly Availability))
+    UC5((Real-Time Matchmaking))
+    UC8((Create Study Group))
+    UC11((Approve/Reject Join Requests))
+    UC15((Browse/Create Classes))
+    UC20((My Groups Dashboard))
+  end
+  actor --- UC1
+  actor --- UC2
+  actor --- UC3
+  actor --- UC5
+  actor --- UC20
+  UC5 --- UC3
+  UC5 --- UC15
+  UC8 --- UC2
+  UC20 --- UC2

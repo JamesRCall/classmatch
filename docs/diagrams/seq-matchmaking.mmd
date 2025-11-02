@@ -1,0 +1,12 @@
+sequenceDiagram
+  autonumber
+  actor Student
+  participant UI as Web UI
+  participant Auth as Auth
+  participant Match as Matching
+  Student->>UI: Open Matches
+  UI->>Auth: verify()
+  Auth-->>UI: ok
+  UI->>Match: getMatches(studentId)
+  Match-->>UI: candidates
+  UI-->>Student: render
