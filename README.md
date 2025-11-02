@@ -69,7 +69,7 @@ The app is built using **React (Vite)** for the frontend and styled with **Boots
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/<your-username>/classmatch.git
+git clone https://github.com/JamesRCall/classmatch.git
 cd classmatch/web
 ```
 
