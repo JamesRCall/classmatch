@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-bootstrap";
 import { FaGraduationCap, FaEnvelope, FaLock } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import "./Login.css";
 
 export default function Login() {

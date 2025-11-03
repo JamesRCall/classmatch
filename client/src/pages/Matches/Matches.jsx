@@ -9,9 +9,9 @@ import {
   ButtonGroup,
 } from "react-bootstrap";
 import { FaFilter, FaSearch } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
-import UserMatchCard from "../components/UserMatchCard";
-import { findMatches } from "../data/sampleData";
+import { useAuth } from "../../context/AuthContext";
+import UserMatchCard from "../../components/UserMatchCard/UserMatchCard";
+import { findMatches } from "../../data/sampleData";
 import "./Matches.css";
 
 export default function Matches() {

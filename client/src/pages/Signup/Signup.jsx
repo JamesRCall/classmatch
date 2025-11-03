@@ -16,7 +16,7 @@ import {
   FaGraduationCap,
   FaCalendar,
 } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import "./Signup.css";
 
 export default function Signup() {

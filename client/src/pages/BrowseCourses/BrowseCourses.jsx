@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Form, InputGroup, Alert } from "react-bootstrap";
 import { FaSearch } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
-import CourseCard from "../components/CourseCard";
-import { sampleCourses } from "../data/sampleData";
+import { useAuth } from "../../context/AuthContext";
+import CourseCard from "../../components/CourseCard/CourseCard";
+import { sampleCourses } from "../../data/sampleData";
 import "./BrowseCourses.css";
 
 const BrowseCourses = () => {

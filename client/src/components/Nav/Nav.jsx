@@ -9,7 +9,7 @@ import {
   FaPlus,
   FaSignOutAlt,
 } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import "./Nav.css";
 
 export default function Navigation() {

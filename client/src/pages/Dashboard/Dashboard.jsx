@@ -10,15 +10,15 @@ import {
   Tab,
 } from "react-bootstrap";
 import { FaBook, FaUsers, FaUserFriends, FaPlus } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
   getUserCourses,
   getRelevantGroups,
   findMatches,
-} from "../data/sampleData";
-import CourseCard from "../components/CourseCard";
-import GroupCard from "../components/GroupCard";
+} from "../../data/sampleData";
+import CourseCard from "../../components/CourseCard/CourseCard";
+import GroupCard from "../../components/GroupCard/GroupCard";
 import "./Dashboard.css";
 
 export default function Dashboard() {
