@@ -72,9 +72,6 @@ const BrowseCourses = () => {
       <Row className="mb-4">
         <Col md={8}>
           <InputGroup size="lg">
-            <InputGroup.Text className="search-icon">
-              <FaSearch />
-            </InputGroup.Text>
             <Form.Control
               type="text"
               placeholder="Search by course name, code, or instructor..."

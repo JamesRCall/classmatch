@@ -68,7 +68,7 @@ export default function Dashboard() {
         <Row className="align-items-center">
           <Col>
             <h1 className="display-6 fw-bold text-white mb-2">
-              Welcome back, {user.name?.split(" ")[0] || "Student"}! 👋
+              Welcome back, {user.name?.split(" ")[0] || "Student"}!
             </h1>
             <p className="text-muted lead mb-0">
               Here's what's happening with your classes today
