@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Navbar, Nav, Container, Button } from "react-bootstrap";
+import { Navbar, Nav, Container, Button, Badge } from "react-bootstrap";
 import {
   FaGraduationCap,
   FaHome,
@@ -8,13 +8,57 @@ import {
   FaSearch,
   FaPlus,
   FaSignOutAlt,
+  FaBell,
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
+import NotificationsPanel from "../NotificationsPanel/NotificationsPanel";
+import notificationsService from "../../services/notificationsService";
 import "./Nav.css";
 
 export default function Navigation() {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread notification count periodically
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      fetchUnreadCount();
+
+      // Poll for new notifications every 30 seconds
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, user?.id]);
+
+  const fetchUnreadCount = async () => {
+    if (!user?.id) return;
+
+    try {
+      const data = await notificationsService.getUserNotifications(user.id, {
+        unread_only: true,
+      });
+
+      // data is an array, count only group invitations
+      const invitationCount = Array.isArray(data)
+        ? data.filter((n) => n.type === "group_invitation").length
+        : 0;
+
+      setUnreadCount(invitationCount);
+    } catch (err) {
+      console.error("Error fetching unread count:", err);
+    }
+  };
+
+  const handleNotificationsToggle = () => {
+    setShowNotifications(!showNotifications);
+  };
+
+  const handleNotificationsClose = () => {
+    setShowNotifications(false);
+    fetchUnreadCount(); // Refresh count when panel closes
+  };
 
   const handleLogout = () => {
     logout();
@@ -75,6 +119,22 @@ export default function Navigation() {
 
               <Nav>
                 <div className="d-flex align-items-center">
+                  <Button
+                    variant="link"
+                    className="notification-btn position-relative me-2"
+                    onClick={handleNotificationsToggle}
+                  >
+                    <FaBell size={20} />
+                    {unreadCount > 0 && (
+                      <Badge
+                        bg="danger"
+                        pill
+                        className="position-absolute top-0 start-100 translate-middle"
+                      >
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </Button>
                   <div className="user-info me-3 d-none d-lg-block">
                     <small className="text-muted d-block">Welcome,</small>
                     <span className="text-white fw-semibold">
@@ -108,6 +168,15 @@ export default function Navigation() {
           )}
         </Navbar.Collapse>
       </Container>
+
+      {/* Notifications Panel */}
+      {isAuthenticated && user && (
+        <NotificationsPanel
+          show={showNotifications}
+          onHide={handleNotificationsClose}
+          userId={user.id}
+        />
+      )}
     </Navbar>
   );
 }

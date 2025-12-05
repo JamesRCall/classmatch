@@ -12,21 +12,27 @@ import {
 } from "react-bootstrap";
 import { FaBook, FaUsers, FaUserFriends, FaPlus } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import usersService from "../../services/usersService";
 import groupsService from "../../services/groupsService";
 import CourseCard from "../../components/CourseCard/CourseCard";
 import GroupCard from "../../components/GroupCard/GroupCard";
+import GroupDetailModal from "../../components/GroupDetailModal/GroupDetailModal";
 import "./Dashboard.css";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [relevantGroups, setRelevantGroups] = useState([]);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("courses");
+  const [selectedUserForInvite, setSelectedUserForInvite] = useState(null);
 
   // Fetch user overview data (courses, groups, matches) on mount
   useEffect(() => {
@@ -55,6 +61,41 @@ export default function Dashboard() {
 
     fetchDashboardData();
   }, [user]);
+
+  // Check for tab parameter and selected user from Matches page
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get("tab");
+
+    if (tabParam === "groups") {
+      setActiveTab("groups");
+
+      // Check for selected user in sessionStorage
+      const storedUser = sessionStorage.getItem("selectedUserForInvite");
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setSelectedUserForInvite(userData);
+          sessionStorage.removeItem("selectedUserForInvite"); // Clear after reading
+        } catch (err) {
+          console.error("Error parsing selected user:", err);
+        }
+      }
+    }
+  }, [location.search]);
+
+  // Handle opening group detail modal
+  const handleViewGroup = (group) => {
+    setSelectedGroupId(group.id);
+    setShowGroupModal(true);
+  };
+
+  // Handle closing group detail modal
+  const handleCloseGroupModal = () => {
+    setShowGroupModal(false);
+    setSelectedGroupId(null);
+    setSelectedUserForInvite(null); // Clear selected user when modal closes
+  };
 
   if (!user) {
     return null;
@@ -125,7 +166,11 @@ export default function Dashboard() {
 
       <Card className="main-content-card shadow-sm">
         <Card.Body className="p-0">
-          <Tabs defaultActiveKey="courses" className="dashboard-tabs">
+          <Tabs
+            activeKey={activeTab}
+            onSelect={(k) => setActiveTab(k)}
+            className="dashboard-tabs"
+          >
             <Tab
               eventKey="courses"
               title={
@@ -233,7 +278,10 @@ export default function Dashboard() {
                     <Row xs={1} md={2} className="g-3">
                       {relevantGroups.map((group) => (
                         <Col key={group.id}>
-                          <GroupCard group={group} />
+                          <GroupCard
+                            group={group}
+                            onViewMore={handleViewGroup}
+                          />
                         </Col>
                       ))}
                     </Row>
@@ -308,6 +356,15 @@ export default function Dashboard() {
           </Tabs>
         </Card.Body>
       </Card>
+
+      {/* Group Detail Modal */}
+      <GroupDetailModal
+        show={showGroupModal}
+        onHide={handleCloseGroupModal}
+        groupId={selectedGroupId}
+        currentUserId={user?.id}
+        preSelectedUser={selectedUserForInvite}
+      />
     </Container>
   );
 }

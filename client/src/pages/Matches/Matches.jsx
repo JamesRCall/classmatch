@@ -10,17 +10,18 @@ import {
 } from "react-bootstrap";
 import { FaFilter, FaSearch } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import UserMatchCard from "../../components/UserMatchCard/UserMatchCard";
 import usersService from "../../services/usersService";
 import "./Matches.css";
 
 export default function Matches() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
   const [filteredMatches, setFilteredMatches] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("matchScore");
-  const [showMessage, setShowMessage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -69,9 +70,12 @@ export default function Matches() {
     setFilteredMatches(filtered);
   }, [searchTerm, sortBy, matches]);
 
-  const handleMessage = (match) => {
-    setShowMessage(true);
-    setTimeout(() => setShowMessage(false), 3000);
+  // Store selected user and navigate to dashboard groups tab
+  const handleInviteToGroup = (match) => {
+    // Store the selected user in sessionStorage for the dashboard to access
+    sessionStorage.setItem("selectedUserForInvite", JSON.stringify(match));
+    // Navigate to dashboard with groups tab active
+    navigate("/dashboard?tab=groups");
   };
 
   if (!user) {
@@ -88,13 +92,6 @@ export default function Matches() {
           Connect with classmates in your courses
         </p>
       </div>
-
-      {showMessage && (
-        <Alert variant="info" dismissible onClose={() => setShowMessage(false)}>
-          Messaging feature coming soon! For now, reach out to your matches in
-          class.
-        </Alert>
-      )}
 
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError("")}>
@@ -163,7 +160,7 @@ export default function Matches() {
                 <UserMatchCard
                   key={idx}
                   user={match}
-                  onMessage={handleMessage}
+                  onInviteToGroup={handleInviteToGroup}
                 />
               ))}
             </Col>

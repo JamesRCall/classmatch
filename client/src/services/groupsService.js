@@ -80,18 +80,22 @@ const groupsService = {
   },
 
   /**
-   * Join a group
+   * Join a group or send invitation
    * @param {number} groupId - Group ID
    * @param {number} userId - User ID to add
-   * @returns {Promise<Object>} Success response
+   * @param {number} [inviterId] - ID of user sending invitation
+   * @returns {Promise<Object>} Success response with status (active/pending)
    */
-  joinGroup: async (groupId, userId) => {
+  joinGroup: async (groupId, userId, inviterId = null) => {
     try {
+      const payload = { user_id: userId };
+      if (inviterId) {
+        payload.inviter_id = inviterId;
+      }
+
       const response = await apiClient.post(
         `/api/commands/groups/${groupId}/join`,
-        {
-          user_id: userId,
-        }
+        payload
       );
       return response.data;
     } catch (error) {
@@ -207,6 +211,42 @@ const groupsService = {
 
       const response = await apiClient.get(
         `/api/queries/groups/${groupId}/messages?${params.toString()}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Accept a pending group invitation
+   * @param {number} groupId - Group ID
+   * @param {number} userId - User ID accepting the invitation
+   * @returns {Promise<Object>} Success response
+   */
+  acceptInvitation: async (groupId, userId) => {
+    try {
+      const response = await apiClient.post(
+        `/api/commands/groups/${groupId}/accept-invitation`,
+        { user_id: userId }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Decline a pending group invitation
+   * @param {number} groupId - Group ID
+   * @param {number} userId - User ID declining the invitation
+   * @returns {Promise<Object>} Success response
+   */
+  declineInvitation: async (groupId, userId) => {
+    try {
+      const response = await apiClient.post(
+        `/api/commands/groups/${groupId}/decline-invitation`,
+        { user_id: userId }
       );
       return response.data;
     } catch (error) {

@@ -69,6 +69,21 @@
   color: #dc3545 !important;
 }
 
+.notification-btn {
+  color: #98a2b3 !important;
+  padding: 0.5rem;
+  text-decoration: none !important;
+  transition: all 0.2s ease;
+}
+
+.notification-btn:hover {
+  color: #9bd0ff !important;
+}
+
+.notification-btn:focus {
+  box-shadow: none !important;
+}
+
 @media (max-width: 991px) {
   .navbar-custom .navbar-collapse {
     margin-top: 1rem;

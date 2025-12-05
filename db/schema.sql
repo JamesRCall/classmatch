@@ -68,7 +68,7 @@ CREATE TABLE group_members (
   group_id BIGINT UNSIGNED NOT NULL,
   user_id BIGINT UNSIGNED NOT NULL,
   role ENUM('member','admin') NOT NULL DEFAULT 'member',
-  status ENUM('active','removed') NOT NULL DEFAULT 'active',
+  status ENUM('active','removed','pending') NOT NULL DEFAULT 'active',
   joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (group_id, user_id),
   INDEX idx_gm_user (user_id),

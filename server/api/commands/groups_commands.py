@@ -134,6 +134,7 @@ def join_group(group_id: int):
     """Add a user as an active member to the group if it's not full"""
     data = request.get_json(force=True)
     user_id = data.get("user_id")
+    inviter_id = data.get("inviter_id")
 
     if not user_id:
         return jsonify({"error": "user_id is required"}), 400
@@ -141,9 +142,9 @@ def join_group(group_id: int):
     try:
         with engine.begin() as conn:
             g = conn.execute(
-                text("SELECT owner_user_id, max_members FROM `groups` WHERE id = :gid"),
+                text("SELECT owner_user_id, max_members, name, course_id FROM `groups` WHERE id = :gid"),
                 {"gid": group_id},
-            ).first()
+            ).mappings().first()
             if not g:
                 return jsonify({"error": "Group not found"}), 404
 
@@ -155,9 +156,56 @@ def join_group(group_id: int):
                 {"gid": group_id},
             ).mappings().first()
 
-            if g.max_members is not None and c["cnt"] >= g.max_members:
+            if g["max_members"] is not None and c["cnt"] >= g["max_members"]:
                 return jsonify({"error": "Group is full"}), 400
 
+            # If inviter_id provided, create a pending invitation and notification
+            if inviter_id:
+                # Check existing membership/invitation
+                existing = conn.execute(
+                    text(
+                        "SELECT status FROM group_members WHERE group_id = :gid AND user_id = :uid"
+                    ),
+                    {"gid": group_id, "uid": user_id}
+                ).first()
+
+                if existing:
+                    if existing.status == 'active':
+                        return jsonify({"error": "User already in group"}), 400
+                    elif existing.status == 'pending':
+                        return jsonify({"error": "Invitation already pending"}), 400
+
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO group_members (group_id, user_id, role, status)
+                        VALUES (:gid, :uid, 'member', 'pending')
+                        ON DUPLICATE KEY UPDATE status = 'pending'
+                        """
+                    ),
+                    {"gid": group_id, "uid": user_id},
+                )
+
+                notification_data = {
+                    "group_id": group_id,
+                    "group_name": g["name"],
+                    "inviter_id": inviter_id if inviter_id else g["owner_user_id"],
+                    "course_id": g["course_id"],
+                }
+
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO notifications (user_id, type, data)
+                        VALUES (:uid, 'group_invitation', :data)
+                        """
+                    ),
+                    {"uid": user_id, "data": str(notification_data).replace("'", '"')}
+                )
+
+                return jsonify({"ok": True, "message": "Invitation sent", "status": "pending"}), 201
+
+            # No inviter_id -> user is requesting to join directly (active)
             conn.execute(
                 text(
                     """
@@ -172,7 +220,7 @@ def join_group(group_id: int):
             GroupJoined(
                 group_id=group_id,
                 user_id=user_id,
-                owner_user_id=g.owner_user_id,
+                owner_user_id=g["owner_user_id"],
             )
         )
         return jsonify({"ok": True, "message": "Joined group"}), 201
@@ -285,5 +333,129 @@ def transfer_group_ownership(group_id: int):
             )
 
         return jsonify({"ok": True, "message": "Ownership transferred"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp_groups_commands.post("/<int:group_id>/accept-invitation")
+def accept_group_invitation(group_id: int):
+    """Accept a pending group invitation"""
+    data = request.get_json(force=True)
+    user_id = data.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
+    try:
+        with engine.begin() as conn:
+            invitation = conn.execute(
+                text(
+                    """
+                    SELECT status FROM group_members
+                    WHERE group_id = :gid AND user_id = :uid
+                    """
+                ),
+                {"gid": group_id, "uid": user_id}
+            ).first()
+
+            if not invitation:
+                return jsonify({"error": "No invitation found"}), 404
+
+            if invitation.status != 'pending':
+                return jsonify({"error": "Invitation is not pending"}), 400
+
+            conn.execute(
+                text(
+                    """
+                    UPDATE group_members
+                    SET status = 'active'
+                    WHERE group_id = :gid AND user_id = :uid
+                    """
+                ),
+                {"gid": group_id, "uid": user_id}
+            )
+
+            group = conn.execute(
+                text("SELECT owner_user_id FROM `groups` WHERE id = :gid"),
+                {"gid": group_id}
+            ).first()
+
+            conn.execute(
+                text(
+                    """
+                    UPDATE notifications
+                    SET is_read = 1
+                    WHERE user_id = :uid
+                    AND type = 'group_invitation'
+                    AND JSON_EXTRACT(data, '$.group_id') = :gid
+                    """
+                ),
+                {"uid": user_id, "gid": group_id}
+            )
+
+        event_bus.publish(
+            GroupJoined(
+                group_id=group_id,
+                user_id=user_id,
+                owner_user_id=group.owner_user_id,
+            )
+        )
+
+        return jsonify({"ok": True, "message": "Invitation accepted"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp_groups_commands.post("/<int:group_id>/decline-invitation")
+def decline_group_invitation(group_id: int):
+    """Decline a pending group invitation"""
+    data = request.get_json(force=True)
+    user_id = data.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
+    try:
+        with engine.begin() as conn:
+            invitation = conn.execute(
+                text(
+                    """
+                    SELECT status FROM group_members
+                    WHERE group_id = :gid AND user_id = :uid
+                    """
+                ),
+                {"gid": group_id, "uid": user_id}
+            ).first()
+
+            if not invitation:
+                return jsonify({"error": "No invitation found"}), 404
+
+            if invitation.status != 'pending':
+                return jsonify({"error": "Invitation is not pending"}), 400
+
+            conn.execute(
+                text(
+                    """
+                    DELETE FROM group_members
+                    WHERE group_id = :gid AND user_id = :uid
+                    """
+                ),
+                {"gid": group_id, "uid": user_id}
+            )
+
+            conn.execute(
+                text(
+                    """
+                    UPDATE notifications
+                    SET is_read = 1
+                    WHERE user_id = :uid
+                    AND type = 'group_invitation'
+                    AND JSON_EXTRACT(data, '$.group_id') = :gid
+                    """
+                ),
+                {"uid": user_id, "gid": group_id}
+            )
+
+        return jsonify({"ok": True, "message": "Invitation declined"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

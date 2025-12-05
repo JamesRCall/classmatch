@@ -44,7 +44,8 @@ def get_user_overview(user_id: int):
             courses = conn.execute(
                 text(
                     """
-                    SELECT c.id, c.code, c.name, c.instructor, c.schedule,
+                    SELECT c.id, c.code, c.name, c.section, c.instructor, 
+                           c.schedule, c.students, c.building, c.room,
                            e.enrolled_at
                     FROM enrollments e
                     JOIN courses c ON e.course_id = c.id
@@ -123,6 +124,7 @@ def get_user_groups(user_id: int):
                 text(
                     """
                     SELECT g.id, g.name, g.description, g.meeting_time, g.location,
+                           g.max_members, g.tags,
                            c.code AS course_code, c.name AS course_name,
                            u.name AS owner_name,
                            gm.role, gm.joined_at,
@@ -134,7 +136,7 @@ def get_user_groups(user_id: int):
                     LEFT JOIN group_members gm2 ON g.id = gm2.group_id AND gm2.status = 'active'
                     WHERE gm.user_id = :uid AND gm.status = 'active' AND g.is_archived = 0
                     GROUP BY g.id, g.name, g.description, g.meeting_time, g.location,
-                             c.code, c.name, u.name, gm.role, gm.joined_at
+                             g.max_members, g.tags, c.code, c.name, u.name, gm.role, gm.joined_at
                     ORDER BY gm.joined_at DESC
                     """
                 ),
