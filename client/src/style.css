@@ -80,20 +80,19 @@ body {
 
 /* Buttons */
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #1c5cff;
   border: none;
   transition: all 0.3s ease;
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
-  background: linear-gradient(135deg, #7c92ee 0%, #8a5cb0 100%);
+  background: #1c5cff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .btn-primary:disabled {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #1c5cff;
   opacity: 0.6;
 }
 
