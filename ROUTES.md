@@ -1,120 +1,85 @@
-# API Routes (Flask Backend)
+**ClassMatch API Routes (CQRS)**
 
-This document lists the Flask backend API endpoints, their paths (including blueprint prefixes), HTTP methods, expected parameters or request bodies, and brief descriptions of what they do.
+- **Base URL:** `http://<host>:<port>` (example: `http://127.0.0.1:5000`)
+- **Notes:** Commands are write operations (mutations). Queries are read-only. All endpoints accept and return JSON unless noted.
 
-Note: The Flask app registers two blueprints with prefixes:
+**Commands (Write endpoints)**
 
-- `api/query` — read/query endpoints (GET)
-- `api/command` — command/write endpoints (POST)
+- **Prefix:** `/api/commands`
 
-Also the app exposes a root health endpoint at `/health`.
+- **Groups** (`/api/commands/groups`):
 
----
+  - **POST /** : Create a new group.
+  - **PUT /<group_id>** : Update group metadata (name, description, meeting_time, etc.).
+  - **DELETE /<group_id>** : Delete a group.
+  - **POST /<group_id>/join** : Request / add a user to the group.
+  - **POST /<group_id>/leave** : Remove a user from the group.
+  - **POST /<group_id>/transfer** : Transfer group ownership to another user.
 
-**Root Health**:
+- **Messages** (`/api/commands/messages`):
 
-- **Path**: `/health`
-- **Method**: `GET`
-- **Description**: Basic server health check for the Flask app.
-- **Response**: JSON `{ "ok": true, "message": "Flask server is running" }` (200)
+  - **POST /group/<group_id>** : Post a new message to a group.
+  - **DELETE /<message_id>** : Delete a message.
 
----
+- **Users** (`/api/commands/users`):
 
-All blueprint endpoints are prefixed by their registered url_prefix. When calling, prepend the prefix to the paths below.
+  - **POST /register** : Register a new user.
+  - **POST /login** : Authenticate a user (returns user info on success).
+  - **PUT /<user_id>** : Update user profile fields.
+  - **DELETE /<user_id>** : Delete a user account.
 
-**Query Blueprint Prefix**: `/api/query`
+- **Courses** (`/api/commands/courses`):
 
-- **GET** `/api/query/health`
+  - **POST /** : Create a new course (admin).
+  - **POST /<course_id>/enroll** : Enroll a user in a course.
+  - **DELETE /<course_id>/enroll** : Unenroll a user from a course.
 
-  - **Description**: Health check for the query layer (blueprint).
-  - **Response**: JSON `{ "ok": true, "message": "query layer active" }` (200)
+- **Availability** (`/api/commands/availability`):
 
-- **GET** `/api/query/users/<user_id>/overview`
+  - **POST /<user_id>** : Add availability slot for `user_id` (body: `{ "slot": "..." }`).
+  - **DELETE /<user_id>/<slot_id>** : Delete a user's availability slot.
+  - **PUT /<user_id>** : Replace all availability slots for a user (body: `{ "slots": ["..."] }`).
 
-  - **Path params**: `user_id` (integer)
-  - **Description**: Returns a user's basic profile, their availability (text slots), and the courses they are enrolled in.
-  - **Response (success)**: JSON object with keys:
-    - `user`: object with `id`, `email`, `name`, `major`, `year`
-    - `availability`: array of availability slot strings (ordered by creation time)
-    - `courses`: array of course objects `{ id, code, name }`
-  - **Errors**:
-    - `404` with `{ "error": "User not found" }` if the user id does not exist
-    - `500` with `{ "error": "<message>" }` on server/database errors
+- **Notifications** (`/api/commands/notifications`):
+  - **POST /<user_id>** : Create a notification for a user.
+  - **PATCH /<user_id>/<notification_id>/read** : Mark a notification read.
+  - **PATCH /<user_id>/read-all** : Mark all notifications read for a user.
+  - **DELETE /<user_id>/<notification_id>** : Delete a notification.
 
-- **GET** `/api/query/users/<user_id>/matches`
+**Queries (Read endpoints)**
 
-  - **Path params**: `user_id` (integer)
-  - **Description**: Finds other users who share enrolled courses with the given user. Returns matches ordered by most shared courses.
-  - **Response (success)**: JSON `{ "matches": [ { "id": ..., "name": ..., "email": ..., "shared_courses": <count> }, ... ] }`
-  - **Errors**:
-    - `404` with `{ "error": "User not found" }` if the user id does not exist
-    - `500` on server/database errors
+- **Prefix:** `/api/queries`
 
-- **GET** `/api/query/groups`
+- **Groups** (`/api/queries/groups`):
 
-  - **Description**: Returns a list of groups with basic information joined to their course code and owner name.
-  - **Response (success)**: JSON array where each item includes `id`, `name`, `description`, `meeting_time`, `location`, `max_members`, `course_code`, `owner_name`.
-  - **Errors**: `500` with `{ "error": "<message>" }` on errors
+  - **GET /** : List groups (filters supported via query params).
+  - **GET /<group_id>** : Get group details.
+  - **GET /<group_id>/members** : Get active members of a group.
+  - **GET /<group_id>/messages** : Get recent messages for a group (read-only).
 
-- **GET** `/api/query/groups/<group_id>`
-  - **Path params**: `group_id` (integer)
-  - **Description**: Returns detailed information for a specific group including members and recent messages.
-  - **Response (success)**: JSON object with group fields plus:
-    - `members`: array of `{ id, name, email, role, status }`
-    - `messages`: array of `{ id, content, created_at, author_name }` ordered by `created_at` descending
-  - **Errors**:
-    - `404` with `{ "error": "Group not found" }` if the group id does not exist
-    - `500` on server/database errors
+- **Messages** (`/api/queries/messages`):
 
----
+  - **GET /group/<group_id>** : Get messages in a group (supports `limit`/`offset`).
+  - **GET /<message_id>** : Get message details.
 
-**Command Blueprint Prefix**: `/api/command`
+- **Users** (`/api/queries/users`):
 
-- **POST** `/api/command/groups`
+  - **GET /** : List users (filter by `major`, `year`).
+  - **GET /<user_id>** : Get a user's profile and public fields.
+  - (additional query endpoints such as `matches`, `groups` may exist under this prefix in `users_queries.py`.)
 
-  - **Description**: Create a new group and automatically add the owner as an admin member.
-  - **Request JSON** (required fields shown):
-    - `owner_user_id` (int) — required
-    - `course_id` (int) — required
-    - `name` (string) — required
-    - `description` (string) — optional (defaults to empty string)
-    - `meeting_time` (string) — optional
-    - `location` (string) — optional
-    - `max_members` (int) — optional (defaults to 5)
-  - **Response (success)**: `{ "ok": true, "group_id": <new id> }` (201)
-  - **Errors**:
-    - `400` if required fields are missing with `{ "error": "owner_user_id, course_id, and name are required" }`
-    - `500` on server/database errors
-  - **Side effects**: Inserts the group row, inserts an initial `group_members` row with role `'admin'` and status `'active'`, and publishes a `GroupCreated` event on the internal event bus.
+- **Courses** (`/api/queries/courses`):
 
-- **POST** `/api/command/groups/<group_id>/join`
+  - **GET /** : List courses (supports `search`, `instructor`).
+  - **GET /<course_id>** : Course detail (includes `enrolled_count`).
+  - **GET /<course_id>/students** : Get students enrolled in a course.
+  - **GET /<course_id>/groups** : Get groups for a course.
 
-  - **Path params**: `group_id` (integer)
-  - **Description**: Adds a user as an active member to the group if it's not full.
-  - **Request JSON**: `{ "user_id": <int> }` (required)
-  - **Response (success)**: `{ "ok": true, "message": "Joined group" }` (201)
-  - **Errors**:
-    - `400` if `user_id` not provided: `{ "error": "user_id is required" }`
-    - `404` if group not found: `{ "error": "Group not found" }`
-    - `400` if group is full: `{ "error": "Group is full" }`
-    - `500` on server/database errors
-  - **Side effects**: Inserts a `group_members` row and publishes a `GroupJoined` event on the event bus.
+- **Availability** (`/api/queries/availability`):
 
-- **POST** `/api/command/groups/<group_id>/messages`
-  - **Path params**: `group_id` (integer)
-  - **Description**: Post a message in a group.
-  - **Request JSON**: `{ "user_id": <int>, "content": <string> }` (both required)
-  - **Response (success)**: `{ "ok": true, "message_id": <new id> }` (201)
-  - **Errors**:
-    - `400` if required fields missing: `{ "error": "user_id and content are required" }`
-    - `500` on server/database errors
-  - **Side effects**: Inserts a `messages` row and publishes a `GroupMessagePosted` event on the event bus.
+  - **GET /<user_id>** : Get availability slots for a user.
 
----
+- **Notifications** (`/api/queries/notifications`):
+  - **GET /<user_id>** : List notifications for a user (query `unread_only=true` to filter).
+  - **GET /<user_id>/count** : Get unread notification count.
 
-Notes and implementation details:
-
-- Endpoints use SQLAlchemy `text()` SQL queries against the configured `engine` (see `server/db.py`).
-- Errors typically return 500 with an error message string when exceptions occur during DB or processing.
-- The command endpoints use `engine.begin()` for transactional writes.
-- The code publishes domain events (`GroupCreated`, `GroupJoined`, `GroupMessagePosted`) to an in-process `event_bus` defined in `server/domain/event_bus.py`.
