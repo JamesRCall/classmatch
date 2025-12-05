@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { sampleUsers } from "../data/sampleData";
+import usersService from "../services/usersService";
 
 const AuthContext = createContext(null);
 
@@ -15,97 +15,88 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Load user session from localStorage on mount
   useEffect(() => {
-    // Check for existing session on mount
-    const sessionData = localStorage.getItem("classmatch_session");
-    if (sessionData) {
-      try {
-        const session = JSON.parse(sessionData);
-        const foundUser = sampleUsers.find((u) => u.email === session.email);
-        if (foundUser) {
-          setUser(foundUser);
+    const loadSession = async () => {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+        } catch (error) {
+          console.error("Error loading session:", error);
+          localStorage.removeItem("user");
         }
-      } catch (error) {
-        console.error("Error loading session:", error);
-        localStorage.removeItem("classmatch_session");
       }
-    }
-    setLoading(false);
-  }, []);
-
-  const login = (email, password) => {
-    // Find user in sample data
-    const foundUser = sampleUsers.find(
-      (u) => u.email === email && u.password === password
-    );
-
-    if (!foundUser) {
-      throw new Error("Invalid email or password");
-    }
-
-    // Create session
-    const session = { email: foundUser.email, timestamp: Date.now() };
-    localStorage.setItem("classmatch_session", JSON.stringify(session));
-
-    setUser(foundUser);
-    return foundUser;
-  };
-
-  const signup = (userData) => {
-    // In real app, this would call API
-    // For now, just add to localStorage
-    const users = JSON.parse(localStorage.getItem("classmatch_users") || "[]");
-
-    // Check if email exists
-    if (
-      users.find((u) => u.email === userData.email) ||
-      sampleUsers.find((u) => u.email === userData.email)
-    ) {
-      throw new Error("Email already exists");
-    }
-
-    const newUser = {
-      id: Date.now(),
-      ...userData,
-      avatar: userData.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase(),
-      enrolledCourses: [],
-      studyPreferences: {
-        times: [],
-        location: [],
-        style: "",
-      },
+      setLoading(false);
     };
 
-    users.push(newUser);
-    localStorage.setItem("classmatch_users", JSON.stringify(users));
+    loadSession();
+  }, []);
 
-    // Auto login after signup
-    const session = { email: newUser.email, timestamp: Date.now() };
-    localStorage.setItem("classmatch_session", JSON.stringify(session));
-    setUser(newUser);
+  // Login user with backend API
+  const login = async (email, password) => {
+    try {
+      const response = await usersService.login(email, password);
 
-    return newUser;
+      if (response.ok && response.user) {
+        setUser(response.user);
+        return response.user;
+      } else {
+        throw new Error(response.error || "Invalid email or password");
+      }
+    } catch (error) {
+      throw new Error(error.error || "Login failed. Please try again.");
+    }
+  };
+
+  // Register new user with backend API
+  const signup = async (userData) => {
+    try {
+      const response = await usersService.register({
+        email: userData.email,
+        password: userData.password,
+        name: userData.name,
+        major: userData.major,
+        year: userData.year,
+      });
+
+      if (response.ok && response.user_id) {
+        //Auto-login after successful registration
+        const loginResponse = await usersService.login(
+          userData.email,
+          userData.password
+        );
+
+        if (loginResponse.ok && loginResponse.user) {
+          setUser(loginResponse.user);
+          return loginResponse.user;
+        }
+      }
+
+      throw new Error(response.error || "Registration failed");
+    } catch (error) {
+      throw new Error(error.error || "Signup failed. Please try again.");
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem("classmatch_session");
+    usersService.logout();
     setUser(null);
   };
 
-  const updateProfile = (updates) => {
-    const updatedUser = { ...user, ...updates };
-    setUser(updatedUser);
+  // Update user profile with backend API
+  const updateProfile = async (updates) => {
+    if (!user) return;
 
-    // Update in localStorage for persistence
-    const users = JSON.parse(localStorage.getItem("classmatch_users") || "[]");
-    const index = users.findIndex((u) => u.email === user.email);
-    if (index !== -1) {
-      users[index] = updatedUser;
-      localStorage.setItem("classmatch_users", JSON.stringify(users));
+    try {
+      await usersService.updateUser(user.id, updates);
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      throw error;
     }
   };
 

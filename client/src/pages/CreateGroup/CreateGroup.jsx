@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Row,
@@ -16,11 +16,14 @@ import {
   FaHashtag,
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
-import { getUserCourses } from "../../data/sampleData";
+import { useNavigate } from "react-router-dom";
+import usersService from "../../services/usersService";
+import groupsService from "../../services/groupsService";
 import "./CreateGroup.css";
 
 export default function CreateGroup() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     courseId: "",
@@ -30,10 +33,31 @@ export default function CreateGroup() {
     maxMembers: 6,
     tags: "",
   });
+  const [userCourses, setUserCourses] = useState([]);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const userCourses = user ? getUserCourses(user.email) : [];
+  // Fetch user's enrolled courses on mount
+  useEffect(() => {
+    const fetchUserCourses = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        const overviewData = await usersService.getUserOverview(user.id);
+        setUserCourses(overviewData.courses || []);
+      } catch (err) {
+        console.error("Error fetching courses:", err);
+        setError("Failed to load your courses. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserCourses();
+  }, [user]);
 
   const handleChange = (e) => {
     setFormData({
@@ -42,7 +66,8 @@ export default function CreateGroup() {
     });
   };
 
-  const handleSubmit = (e) => {
+  // Create new study group with backend API
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -51,24 +76,39 @@ export default function CreateGroup() {
       return;
     }
 
-    // Simulate group creation
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      setFormData({
-        name: "",
-        courseId: "",
-        description: "",
-        meetingTime: "",
-        location: "",
-        maxMembers: 6,
-        tags: "",
+    try {
+      setSubmitting(true);
+
+      const tagsArray = formData.tags
+        ? formData.tags.split(",").map((tag) => tag.trim())
+        : [];
+
+      await groupsService.createGroup({
+        owner_user_id: user.id,
+        course_id: formData.courseId,
+        name: formData.name,
+        description: formData.description,
+        meeting_time: formData.meetingTime,
+        location: formData.location,
+        max_members: parseInt(formData.maxMembers),
+        tags: tagsArray,
       });
-    }, 3000);
+
+      setSuccess(true);
+
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
+    } catch (err) {
+      console.error("Error creating group:", err);
+      setError(err.error || "Failed to create study group. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!user) {
-    return null; // Protected route will handle redirect
+    return null;
   }
 
   return (
@@ -93,8 +133,7 @@ export default function CreateGroup() {
               dismissible
               onClose={() => setSuccess(false)}
             >
-              Study group created successfully! Others can now find and join
-              your group.
+              Study group created successfully! Redirecting to dashboard...
             </Alert>
           )}
 
@@ -104,7 +143,9 @@ export default function CreateGroup() {
             </Alert>
           )}
 
-          {userCourses.length === 0 ? (
+          {loading ? (
+            <Alert variant="info">Loading your courses...</Alert>
+          ) : userCourses.length === 0 ? (
             <Alert variant="warning">
               You need to enroll in courses before creating a study group.
               <Button
@@ -252,13 +293,15 @@ export default function CreateGroup() {
                       type="submit"
                       size="lg"
                       className="py-3"
+                      disabled={submitting}
                     >
-                      Create Study Group
+                      {submitting ? "Creating Group..." : "Create Study Group"}
                     </Button>
                     <Button
                       variant="btn btn-outline-danger"
                       type="button"
                       onClick={() => window.history.back()}
+                      disabled={submitting}
                     >
                       Cancel
                     </Button>

@@ -86,8 +86,16 @@ def login_user():
             if not user:
                 return jsonify({"error": "Invalid credentials"}), 401
 
-            if not check_password_hash(user["password_hash"], password):
-                return jsonify({"error": "Invalid credentials"}), 401
+            # Check if password is hashed or plain text (for development)
+            # If password_hash doesn't start with method identifier, it's plain text
+            if user["password_hash"].startswith(('pbkdf2:', 'scrypt:', 'bcrypt')):
+                # Hashed password - use check_password_hash
+                if not check_password_hash(user["password_hash"], password):
+                    return jsonify({"error": "Invalid credentials"}), 401
+            else:
+                # Plain text password (development only) - direct comparison
+                if user["password_hash"] != password:
+                    return jsonify({"error": "Invalid credentials"}), 401
 
             # Return user info without password hash
             user_data = {

@@ -8,15 +8,13 @@ import {
   Button,
   Tabs,
   Tab,
+  Alert,
 } from "react-bootstrap";
 import { FaBook, FaUsers, FaUserFriends, FaPlus } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import {
-  getUserCourses,
-  getRelevantGroups,
-  findMatches,
-} from "../../data/sampleData";
+import usersService from "../../services/usersService";
+import groupsService from "../../services/groupsService";
 import CourseCard from "../../components/CourseCard/CourseCard";
 import GroupCard from "../../components/GroupCard/GroupCard";
 import "./Dashboard.css";
@@ -27,17 +25,39 @@ export default function Dashboard() {
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [relevantGroups, setRelevantGroups] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
+  // Fetch user overview data (courses, groups, matches) on mount
   useEffect(() => {
-    if (user) {
-      setEnrolledCourses(getUserCourses(user.email));
-      setRelevantGroups(getRelevantGroups(user.email));
-      setMatches(findMatches(user.email).slice(0, 3));
-    }
+    const fetchDashboardData = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+
+        const [overviewData, matchesData, userGroupsData] = await Promise.all([
+          usersService.getUserOverview(user.id),
+          usersService.getUserMatches(user.id),
+          usersService.getUserGroups(user.id),
+        ]);
+
+        setEnrolledCourses(overviewData.courses || []);
+        setMatches(matchesData.matches?.slice(0, 3) || []);
+        setRelevantGroups(userGroupsData || []);
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        setError("Failed to load dashboard data. Please refresh the page.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, [user]);
 
   if (!user) {
-    return null; // Protected route will handle redirect
+    return null;
   }
 
   const stats = [
@@ -63,7 +83,6 @@ export default function Dashboard() {
 
   return (
     <Container className="dashboard-page py-4">
-      {/* Welcome Header */}
       <div className="welcome-header mb-4">
         <Row className="align-items-center">
           <Col>
@@ -80,7 +99,12 @@ export default function Dashboard() {
         </Row>
       </div>
 
-      {/* Stats Cards */}
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError("")}>
+          {error}
+        </Alert>
+      )}
+
       <Row className="g-3 mb-4">
         {stats.map((stat, idx) => (
           <Col key={idx} xs={12} md={4}>
@@ -99,11 +123,9 @@ export default function Dashboard() {
         ))}
       </Row>
 
-      {/* Main Content Tabs */}
       <Card className="main-content-card shadow-sm">
         <Card.Body className="p-0">
           <Tabs defaultActiveKey="courses" className="dashboard-tabs">
-            {/* My Courses Tab */}
             <Tab
               eventKey="courses"
               title={
@@ -114,7 +136,11 @@ export default function Dashboard() {
               }
             >
               <div className="p-4">
-                {enrolledCourses.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-5">
+                    <p className="text-muted">Loading courses...</p>
+                  </div>
+                ) : enrolledCourses.length === 0 ? (
                   <div className="empty-state text-center py-5">
                     <FaBook size={64} className="text-muted mb-3" />
                     <h4 className="text-light mb-3">No Courses Yet</h4>
@@ -158,7 +184,6 @@ export default function Dashboard() {
               </div>
             </Tab>
 
-            {/* Study Groups Tab */}
             <Tab
               eventKey="groups"
               title={
@@ -169,7 +194,11 @@ export default function Dashboard() {
               }
             >
               <div className="p-4">
-                {relevantGroups.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-5">
+                    <p className="text-muted">Loading groups...</p>
+                  </div>
+                ) : relevantGroups.length === 0 ? (
                   <div className="empty-state text-center py-5">
                     <FaUsers size={64} className="text-muted mb-3" />
                     <h4 className="text-light mb-3">No Study Groups Found</h4>
@@ -213,7 +242,6 @@ export default function Dashboard() {
               </div>
             </Tab>
 
-            {/* Matches Tab */}
             <Tab
               eventKey="matches"
               title={
@@ -224,7 +252,11 @@ export default function Dashboard() {
               }
             >
               <div className="p-4">
-                {matches.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-5">
+                    <p className="text-muted">Loading matches...</p>
+                  </div>
+                ) : matches.length === 0 ? (
                   <div className="empty-state text-center py-5">
                     <FaUserFriends size={64} className="text-muted mb-3" />
                     <h4 className="text-light mb-3">No Matches Yet</h4>
