@@ -24,8 +24,10 @@ const BrowseCourses = () => {
       try {
         setLoading(true);
         const coursesData = await coursesService.listCourses();
-        setAllCourses(coursesData.courses || []);
-        setFilteredCourses(coursesData.courses || []);
+        // Backend returns array directly
+        const courses = Array.isArray(coursesData) ? coursesData : [];
+        setAllCourses(courses);
+        setFilteredCourses(courses);
 
         if (user) {
           const overviewData = await usersService.getUserOverview(user.id);
