@@ -4,12 +4,16 @@ import {
   FaGraduationCap,
   FaBookOpen,
   FaClock,
-  FaEnvelope,
+  FaUserPlus,
 } from "react-icons/fa";
 import "./UserMatchCard.css";
 
-const UserMatchCard = ({ user, onMessage }) => {
-  const sharedCourses = user.sharedCourses || [];
+const UserMatchCard = ({ user, onInviteToGroup }) => {
+  // Parse shared course codes from backend
+  const sharedCourseCodes = user.shared_course_codes
+    ? user.shared_course_codes.split(", ")
+    : [];
+  const sharedCourses = user.sharedCourses || sharedCourseCodes;
 
   return (
     <Card className="user-match-card shadow-sm mb-3">
@@ -19,18 +23,10 @@ const UserMatchCard = ({ user, onMessage }) => {
             <div className="user-avatar">{user.avatar}</div>
           </Col>
           <Col>
-            <div className="d-flex justify-content-between align-items-start">
-              <div>
-                <h5 className="mb-1 text-white">{user.name}</h5>
-                <div className="text-muted small mb-2">
-                  <FaGraduationCap className="me-1" />
-                  {user.major} • {user.year}
-                </div>
-              </div>
-              <Badge bg="primary" pill>
-                {user.matchScore} {user.matchScore === 1 ? "course" : "courses"}{" "}
-                shared
-              </Badge>
+            <h5 className="mb-1 text-white">{user.name}</h5>
+            <div className="text-muted small mb-2">
+              <FaGraduationCap className="me-1" />
+              {user.major} • {user.year}
             </div>
 
             {user.bio && (
@@ -40,10 +36,10 @@ const UserMatchCard = ({ user, onMessage }) => {
             {sharedCourses.length > 0 && (
               <div className="mb-2">
                 <FaBookOpen className="me-2 text-primary" size={14} />
-                <span className="small text-muted">Shared courses: </span>
-                {sharedCourses.map((courseId, idx) => (
-                  <Badge key={idx} bg="secondary" className="me-1" pill>
-                    {courseId}
+                <span className="small text-muted">Matched in: </span>
+                {sharedCourses.map((courseCode, idx) => (
+                  <Badge key={idx} bg="primary" className="me-1" pill>
+                    {courseCode}
                   </Badge>
                 ))}
               </div>
@@ -59,16 +55,28 @@ const UserMatchCard = ({ user, onMessage }) => {
                 </span>
               </div>
             )}
+          </Col>
+          <Col
+            xs="auto"
+            className="text-end d-flex flex-column align-items-end"
+          >
+            <Badge bg="primary" pill className="mb-2">
+              {user.shared_courses || user.matchScore || 0}{" "}
+              {(user.shared_courses || user.matchScore) === 1
+                ? "course"
+                : "courses"}{" "}
+              shared
+            </Badge>
 
-            {onMessage && (
+            {onInviteToGroup && (
               <Button
-                variant="outline-primary"
+                variant="success"
                 size="sm"
-                className="mt-2"
-                onClick={() => onMessage(user)}
+                className="mt-3"
+                onClick={() => onInviteToGroup(user)}
               >
-                <FaEnvelope className="me-2" />
-                Send Message
+                <FaUserPlus className="me-2" />
+                Invite
               </Button>
             )}
           </Col>

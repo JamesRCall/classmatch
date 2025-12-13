@@ -12,7 +12,9 @@
   - **POST /** : Create a new group.
   - **PUT /<group_id>** : Update group metadata (name, description, meeting_time, etc.).
   - **DELETE /<group_id>** : Delete a group.
-  - **POST /<group_id>/join** : Request / add a user to the group.
+  - **POST /<group_id>/join** : Send invitation or add user to group (body: `{ "user_id": int, "inviter_id": int? }`). Creates pending invitation if inviter_id provided.
+  - **POST /<group_id>/accept-invitation** : Accept pending group invitation (body: `{ "user_id": int }`).
+  - **POST /<group_id>/decline-invitation** : Decline pending group invitation (body: `{ "user_id": int }`).
   - **POST /<group_id>/leave** : Remove a user from the group.
   - **POST /<group_id>/transfer** : Transfer group ownership to another user.
 
@@ -82,4 +84,3 @@
 - **Notifications** (`/api/queries/notifications`):
   - **GET /<user_id>** : List notifications for a user (query `unread_only=true` to filter).
   - **GET /<user_id>/count** : Get unread notification count.
-

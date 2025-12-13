@@ -1,0 +1,36 @@
+.notification-item {
+  border-left: 3px solid #1c5cff;
+  padding: 1rem;
+  transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+  background-color: rgba(28, 92, 255, 0.05);
+}
+
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(28, 92, 255, 0.1);
+  border-radius: 50%;
+}
+
+.notification-content {
+  color: #e0e0e0;
+}
+
+.notification-content strong {
+  color: #ffffff;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.empty-state {
+  opacity: 0.6;
+}

@@ -1,0 +1,41 @@
+.member-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.group-info {
+  background: var(--cm-card);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid var(--cm-border);
+}
+
+.group-info div {
+  display: flex;
+  align-items: center;
+}
+
+.invite-section {
+  background: var(--cm-card);
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid var(--cm-border);
+}
+
+.list-group-item {
+  background: var(--cm-card);
+  border-color: var(--cm-border);
+  color: var(--cm-text);
+}
+
+.list-group-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}

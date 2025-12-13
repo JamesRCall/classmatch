@@ -1,4 +1,4 @@
-// Sample data for development - will be replaced by Flask API + MySQL later
+// Sample data for development - serves as a fallback - real data comes from the flask APIs
 
 export const sampleCourses = [
   {

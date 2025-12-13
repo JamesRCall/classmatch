@@ -10,41 +10,59 @@ import {
 } from "react-bootstrap";
 import { FaFilter, FaSearch } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import UserMatchCard from "../../components/UserMatchCard/UserMatchCard";
-import { findMatches } from "../../data/sampleData";
+import usersService from "../../services/usersService";
 import "./Matches.css";
 
 export default function Matches() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
   const [filteredMatches, setFilteredMatches] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("matchScore");
-  const [showMessage, setShowMessage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
+  // Fetch user matches from backend on mount
   useEffect(() => {
-    if (user) {
-      const allMatches = findMatches(user.email);
-      setMatches(allMatches);
-      setFilteredMatches(allMatches);
-    }
+    const fetchMatches = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        const response = await usersService.getUserMatches(user.id);
+        const matchesData = response.matches || [];
+        setMatches(matchesData);
+        setFilteredMatches(matchesData);
+      } catch (err) {
+        console.error("Error fetching matches:", err);
+        setError("Failed to load matches. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMatches();
   }, [user]);
 
+  // Filter and sort matches based on search term and sort option
   useEffect(() => {
     let filtered = [...matches];
 
-    // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
         (match) =>
           match.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          match.major.toLowerCase().includes(searchTerm.toLowerCase())
+          match.major?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Sort
     if (sortBy === "matchScore") {
-      filtered.sort((a, b) => b.matchScore - a.matchScore);
+      filtered.sort(
+        (a, b) => (b.shared_courses || 0) - (a.shared_courses || 0)
+      );
     } else if (sortBy === "name") {
       filtered.sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -52,13 +70,16 @@ export default function Matches() {
     setFilteredMatches(filtered);
   }, [searchTerm, sortBy, matches]);
 
-  const handleMessage = (match) => {
-    setShowMessage(true);
-    setTimeout(() => setShowMessage(false), 3000);
+  // Store selected user and navigate to dashboard groups tab
+  const handleInviteToGroup = (match) => {
+    // Store the selected user in sessionStorage for the dashboard to access
+    sessionStorage.setItem("selectedUserForInvite", JSON.stringify(match));
+    // Navigate to dashboard with groups tab active
+    navigate("/dashboard?tab=groups");
   };
 
   if (!user) {
-    return null; // Protected route will handle redirect
+    return null;
   }
 
   return (
@@ -72,14 +93,12 @@ export default function Matches() {
         </p>
       </div>
 
-      {showMessage && (
-        <Alert variant="info" dismissible onClose={() => setShowMessage(false)}>
-          Messaging feature coming soon! For now, reach out to your matches in
-          class.
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError("")}>
+          {error}
         </Alert>
       )}
 
-      {/* Search and Filter Bar */}
       <Row className="mb-4">
         <Col md={8}>
           <div className="search-box">
@@ -117,14 +136,18 @@ export default function Matches() {
         </Col>
       </Row>
 
-      {/* Results */}
       <div className="results-section">
         <h5 className="text-light mb-3">
-          {filteredMatches.length}{" "}
-          {filteredMatches.length === 1 ? "Match" : "Matches"} Found
+          {loading
+            ? "Loading..."
+            : `${filteredMatches.length} ${
+                filteredMatches.length === 1 ? "Match" : "Matches"
+              } Found`}
         </h5>
 
-        {filteredMatches.length === 0 ? (
+        {loading ? (
+          <Alert variant="info">Loading matches...</Alert>
+        ) : filteredMatches.length === 0 ? (
           <Alert variant="info">
             {searchTerm
               ? "No matches found for your search. Try different keywords."
@@ -137,7 +160,7 @@ export default function Matches() {
                 <UserMatchCard
                   key={idx}
                   user={match}
-                  onMessage={handleMessage}
+                  onInviteToGroup={handleInviteToGroup}
                 />
               ))}
             </Col>

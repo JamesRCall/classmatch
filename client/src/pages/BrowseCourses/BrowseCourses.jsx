@@ -3,27 +3,58 @@ import { Container, Row, Col, Form, InputGroup, Alert } from "react-bootstrap";
 import { FaSearch } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import CourseCard from "../../components/CourseCard/CourseCard";
-import { sampleCourses } from "../../data/sampleData";
+import coursesService from "../../services/coursesService";
+import usersService from "../../services/usersService";
 import "./BrowseCourses.css";
 
 const BrowseCourses = () => {
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("All");
-  const [filteredCourses, setFilteredCourses] = useState(sampleCourses);
+  const [allCourses, setAllCourses] = useState([]);
+  const [filteredCourses, setFilteredCourses] = useState([]);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
+  // Fetch all courses and user's enrolled courses on mount
   useEffect(() => {
-    let filtered = sampleCourses;
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const coursesData = await coursesService.listCourses();
+        // Backend returns array directly
+        const courses = Array.isArray(coursesData) ? coursesData : [];
+        setAllCourses(courses);
+        setFilteredCourses(courses);
 
-    // Filter by department
+        if (user) {
+          const overviewData = await usersService.getUserOverview(user.id);
+          const enrolledIds = overviewData.courses?.map((c) => c.id) || [];
+          setEnrolledCourseIds(enrolledIds);
+        }
+      } catch (err) {
+        console.error("Error fetching courses:", err);
+        setError("Failed to load courses. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
+  // Filter courses based on department and search term
+  useEffect(() => {
+    let filtered = [...allCourses];
+
     if (selectedDepartment !== "All") {
       filtered = filtered.filter((course) =>
         course.code.startsWith(selectedDepartment)
       );
     }
 
-    // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
         (course) =>
@@ -34,21 +65,31 @@ const BrowseCourses = () => {
     }
 
     setFilteredCourses(filtered);
-  }, [searchTerm, selectedDepartment]);
+  }, [searchTerm, selectedDepartment, allCourses]);
 
-  const handleEnrollCourse = (course) => {
-    const currentCourses = user.enrolledCourses || [];
-    if (!currentCourses.includes(course.id)) {
-      updateProfile({
-        enrolledCourses: [...currentCourses, course.id],
-      });
+  // Enroll user in selected course
+  const handleEnrollCourse = async (course) => {
+    if (!user) {
+      setError("Please login to enroll in courses");
+      return;
+    }
+
+    if (enrolledCourseIds.includes(course.id)) {
+      return;
+    }
+
+    try {
+      await coursesService.enrollInCourse(course.id, user.id);
+      setEnrolledCourseIds([...enrolledCourseIds, course.id]);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err) {
+      console.error("Error enrolling in course:", err);
+      setError("Failed to enroll in course. Please try again.");
     }
   };
 
   const departments = ["All", "CS", "MATH"];
-  const userEnrolledCourses = user?.enrolledCourses || [];
 
   return (
     <Container className="browse-courses-page py-4">
@@ -66,6 +107,12 @@ const BrowseCourses = () => {
           onClose={() => setShowSuccess(false)}
         >
           Course added successfully! Check your Dashboard to see matches.
+        </Alert>
+      )}
+
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError("")}>
+          {error}
         </Alert>
       )}
 
@@ -99,12 +146,17 @@ const BrowseCourses = () => {
 
       <div className="results-header mb-3">
         <h5 className="text-light">
-          {filteredCourses.length}{" "}
-          {filteredCourses.length === 1 ? "Course" : "Courses"} Found
+          {loading
+            ? "Loading..."
+            : `${filteredCourses.length} ${
+                filteredCourses.length === 1 ? "Course" : "Courses"
+              } Found`}
         </h5>
       </div>
 
-      {filteredCourses.length === 0 ? (
+      {loading ? (
+        <Alert variant="info">Loading courses...</Alert>
+      ) : filteredCourses.length === 0 ? (
         <Alert variant="info">
           No courses found matching your criteria. Try adjusting your search or
           filters.
@@ -115,7 +167,7 @@ const BrowseCourses = () => {
             <Col key={course.id}>
               <CourseCard
                 course={course}
-                isEnrolled={userEnrolledCourses.includes(course.id)}
+                isEnrolled={enrolledCourseIds.includes(course.id)}
                 onEnroll={handleEnrollCourse}
               />
             </Col>

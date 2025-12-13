@@ -42,7 +42,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4d8dff 0%, #1c5cff 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,6 +67,21 @@
   background: rgba(220, 53, 69, 0.1) !important;
   border-color: #dc3545 !important;
   color: #dc3545 !important;
+}
+
+.notification-btn {
+  color: #98a2b3 !important;
+  padding: 0.5rem;
+  text-decoration: none !important;
+  transition: all 0.2s ease;
+}
+
+.notification-btn:hover {
+  color: #9bd0ff !important;
+}
+
+.notification-btn:focus {
+  box-shadow: none !important;
 }
 
 @media (max-width: 991px) {
