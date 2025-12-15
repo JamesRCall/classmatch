@@ -168,7 +168,7 @@ python -m venv server/venv
 server/venv/Scripts/activate # Windows
 source server/venv/bin/activate # Mac / Linux
 
-#Install depdendencies
+#Install dependencies
 pip install -r server/requirements.txt
 
 # Run test
