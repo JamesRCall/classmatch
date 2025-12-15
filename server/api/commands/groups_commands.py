@@ -180,7 +180,6 @@ def join_group(group_id: int):
                         """
                         INSERT INTO group_members (group_id, user_id, role, status)
                         VALUES (:gid, :uid, 'member', 'pending')
-                        ON DUPLICATE KEY UPDATE status = 'pending'
                         """
                     ),
                     {"gid": group_id, "uid": user_id},
