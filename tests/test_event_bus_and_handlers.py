@@ -79,39 +79,22 @@ def test_handle_group_message_posted_notifies_active_members(test_engine):
     with test_engine.begin() as conn:
         conn.execute(text("DELETE FROM notifications"))
         conn.execute(text("DELETE FROM group_members"))
-        # ensure users exist (insert without fixed ids to avoid conflicts)
-        conn.execute(text("INSERT OR IGNORE INTO users (email, password_hash, name) VALUES ('u1@example.com', 'x', 'U1')"))
-        conn.execute(text("INSERT OR IGNORE INTO users (email, password_hash, name) VALUES ('u2@example.com', 'x', 'U2')"))
-        conn.execute(text("INSERT OR IGNORE INTO users (email, password_hash, name) VALUES ('u3@example.com', 'x', 'U3')"))
-        u1 = conn.execute(text("SELECT id FROM users WHERE email = :e"), {"e": 'u1@example.com'}).first().id
-        u2 = conn.execute(text("SELECT id FROM users WHERE email = :e"), {"e": 'u2@example.com'}).first().id
-        u3 = conn.execute(text("SELECT id FROM users WHERE email = :e"), {"e": 'u3@example.com'}).first().id
-        # create a dedicated group for this test
-        conn.execute(text("INSERT INTO `groups` (owner_user_id, course_id, name) VALUES (:oid, :cid, :name)"), {"oid": u1, "cid": 'TSTG', "name": 'evtbus-20'})
-        gid = conn.execute(text("SELECT id FROM `groups` WHERE name = :n ORDER BY id DESC LIMIT 1"), {"n": 'evtbus-20'}).first().id
-        # group has members u1 (poster), u2 (active), u3 (pending)
-        conn.execute(text("INSERT INTO group_members (group_id, user_id, role, status) VALUES (:gid, :uid, 'member', 'active')"), {"gid": gid, "uid": u1})
-        conn.execute(text("INSERT INTO group_members (group_id, user_id, role, status) VALUES (:gid, :uid, 'member', 'active')"), {"gid": gid, "uid": u2})
-        conn.execute(text("INSERT INTO group_members (group_id, user_id, role, status) VALUES (:gid, :uid, 'member', 'pending')"), {"gid": gid, "uid": u3})
-
-    # retrieve ids to call handler
-    with test_engine.begin() as conn:
-        u1 = conn.execute(text("SELECT id FROM users WHERE email = :e"), {"e": 'u1@example.com'}).first().id
-        gid = conn.execute(text("SELECT id FROM `groups` WHERE name = :n ORDER BY id DESC LIMIT 1"), {"n": 'evtbus-20'}).first().id
+        # ensure users exist
+        conn.execute(text("INSERT INTO users (id, email, password_hash, name) VALUES (1, 'u1@example.com', 'x', 'U1')"))
+        conn.execute(text("INSERT INTO users (id, email, password_hash, name) VALUES (2, 'u2@example.com', 'x', 'U2')"))
+        # group 20 has members 1 (poster), 2 (active), 3 (pending)
+        conn.execute(text("INSERT INTO group_members (group_id, user_id, role, status) VALUES (20, 1, 'member', 'active')"))
+        conn.execute(text("INSERT INTO group_members (group_id, user_id, role, status) VALUES (20, 2, 'member', 'active')"))
+        conn.execute(text("INSERT INTO group_members (group_id, user_id, role, status) VALUES (20, 3, 'member', 'pending')"))
 
     # ensure handler uses test engine rather than production engine
     handlers.engine = test_engine
 
-    handlers.handle_group_message_posted(GroupMessagePosted(group_id=gid, user_id=u1, message_id=100))
+    handlers.handle_group_message_posted(GroupMessagePosted(group_id=20, user_id=1, message_id=100))
 
     with test_engine.begin() as conn:
         notifs = conn.execute(text("SELECT user_id, type FROM notifications ORDER BY user_id")).fetchall()
-        # only one user should be notified
+        # only user 2 should be notified
         assert len(notifs) == 1
-        notified_user = notifs[0].user_id
-        notif_type = notifs[0].type
-        # lookup expected active member id (u2)
-        u2 = conn.execute(text("SELECT id FROM users WHERE email = :e"), {"e": 'u2@example.com'}).first().id
-
-    assert notified_user == u2
-    assert notif_type == "group_message_posted"
+        assert notifs[0].user_id == 2
+        assert notifs[0].type == "group_message_posted"
