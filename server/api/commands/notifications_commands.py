@@ -3,6 +3,7 @@ Notifications Command API - Write operations for notifications (CQRS Command Sid
 Handles: Create, Mark as read, Delete
 """
 from flask import Blueprint, jsonify, request
+import json
 from sqlalchemy import text
 
 from db import engine
@@ -16,6 +17,9 @@ def create_notification(user_id: int):
     data = request.get_json(force=True)
     notif_type = data.get("type")
     notif_data = data.get("data")
+    # Serialize data to JSON for storage
+    if notif_data is not None:
+        notif_data = json.dumps(notif_data)
 
     if not notif_type:
         return jsonify({"error": "type is required"}), 400
