@@ -153,6 +153,30 @@ Notes:
 
 ---
 
+## Testing
+
+Unit, integration, and system validation tests are provided using `pytest`. Tests use an in-memory SQLite database and patch the application's DB engine so they run without a local MySQL server.
+
+Run tests from the project root:
+
+```bash
+# Create virtual environment 
+# (Skip this step there's venv in server folder already)
+python -m venv server/venv
+
+# Activate created enviroment
+server/venv/Scripts/activate # Windows
+source server/venv/bin/activate # Mac / Linux
+
+#Install dependencies
+pip install -r server/requirements.txt
+
+# Run test
+pytest
+```
+
+---
+
 ## Authors
 
 - **James Callender**
